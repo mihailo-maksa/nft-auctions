@@ -1,32 +1,77 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// When running the script with `npx hardhat run <script>` you'll find the Hardhat
-// Runtime Environment's members available in the global scope.
-const hre = require("hardhat");
+const hre = require('hardhat')
+const { ethers } = require('ethers')
 
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
+  const accounts = await hre.ethers.getSigners()
+  const signer = accounts[0]
 
-  // We get the contract to deploy
-  const Greeter = await hre.ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
+  const MockNFT = await hre.ethers.getContractFactory('MockNFT')
+  const mockNFT = await MockNFT.deploy(
+    100,
+    'Mock NFT',
+    'MNFT',
+    'https://metadata.server.com/?id=',
+  )
+  await mockNFT.deployed()
+  console.log(`MockNFT address: ${mockNFT.address}`)
 
-  await greeter.deployed();
+  const mintTx0 = await mockNFT.mint(signer.address)
+  await mintTx0.wait()
 
-  console.log("Greeter deployed to:", greeter.address);
+  const mintTx1 = await mockNFT.mint(signer.address)
+  await mintTx1.wait()
+
+  const nftId0 = 0
+  const nftId1 = 1
+
+  const DutchAuction = await hre.ethers.getContractFactory('DutchAuction')
+  const dutchAuction = await DutchAuction.deploy(
+    mockNFT.address,
+    nftId0,
+    ethers.utils.parseEther('0.1'),
+    1,
+  )
+  await dutchAuction.deployed()
+  console.log(`DutchAuction address: ${dutchAuction.address}`)
+
+  const dutchApproveTx = await mockNFT.approve(dutchAuction.address, nftId0)
+  await dutchApproveTx.wait()
+
+  const EnglishAuction = await hre.ethers.getContractFactory('EnglishAuction')
+  const englishAuction = await EnglishAuction.deploy(
+    mockNFT.address,
+    nftId1,
+    ethers.utils.parseEther('0.1'),
+  )
+  await englishAuction.deployed()
+  console.log(`EnglishAuction address: ${englishAuction.address}`)
+
+  const englishApproveTx = await mockNFT.approve(englishAuction.address, nftId1)
+  await englishApproveTx.wait()
+
+  const englishStartTx = await englishAuction.startAuction()
+  await englishStartTx.wait()
+
+  const MockToken = await ethers.getContractFactory('MockToken')
+  const mockToken = await MockToken.deploy('MockToken', 'MOCK')
+  await mockToken.deployed()
+  console.log(`MockToken address: ${mockToken.address}`)
+
+  const mintTokensTx = await mockToken.mint(
+    signer.address,
+    ethers.utils.parseEther('1000'),
+  )
+  await mintTokensTx.wait()
+
+  const CrowdFund = await hre.ethers.getContractFactory('CrowdFund')
+  const crowdFund = await CrowdFund.deploy(mockToken.address)
+  await crowdFund.deployed()
+  console.log(`CrowdFund address: ${crowdFund.address}`)
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+    console.error(error)
+    process.exit(1)
+  })
