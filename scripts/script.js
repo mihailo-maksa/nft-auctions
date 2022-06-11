@@ -52,7 +52,7 @@ async function main() {
   const englishStartTx = await englishAuction.startAuction()
   await englishStartTx.wait()
 
-  const MockToken = await ethers.getContractFactory('MockToken')
+  const MockToken = await hre.ethers.getContractFactory('MockToken')
   const mockToken = await MockToken.deploy('MockToken', 'MOCK')
   await mockToken.deployed()
   console.log(`MockToken address: ${mockToken.address}`)
